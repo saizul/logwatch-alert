@@ -1,0 +1,88 @@
+# logwatch-alert example configuration.
+# Values like ${TELEGRAM_BOT_TOKEN} come from the environment; ${VAR:-default} sets a fallback.
+
+settings:
+  poll_interval: 1s          # how often files are checked for new lines
+  glob_refresh: 10s          # how often globs are re-expanded to find new files
+  start_at: end              # "end" (like tail -F) or "beginning" for existing files
+  default_cooldown: 10m      # used by rules without their own cooldown
+  hostname: ${ALERT_HOSTNAME:-}   # shown in alerts; defaults to the machine's hostname
+  default_notify: [telegram, slack]   # used by rules without "notify"
+
+sources:
+  - path: /var/log/nginx/access.log
+    name: nginx
+  - path: /var/log/nginx/error.log
+    name: nginx-error
+  - path: /var/log/auth.log
+    name: auth
+  - path: /var/log/kern.log
+    name: kernel
+  - path: "/var/log/php*-fpm.log"
+    name: php
+  - path: "/srv/app/logs/*.json"
+    name: app
+    format: json
+
+packs:
+  - nginx
+  - ssh
+  - oom
+  - name: php
+    sources: [php, nginx-error]       # only look for PHP errors in these sources
+    overrides:
+      php-fpm-max-children:
+        severity: error
+        cooldown: 1h
+
+rules:
+  - name: app-5xx
+    description: The JSON API logs too many server errors.
+    sources: [app]
+    json:
+      level: {in: [error, fatal]}
+      status: {gte: 500}
+      path: {regex: "^/api/"}
+    threshold: {count: 10, window: 2m}
+    group_by: "{{ path }}"
+    cooldown: 15m
+    severity: critical
+    notify: [telegram, email]
+    title: "[CRITICAL] {{ status }} errors on {{ path }} ({{ hostname }})"
+    message: |
+      {{ count }} failing requests to {{ path }} in {{ window_human }}.
+      Last error: {{ msg | default('n/a') | truncate(300) }}
+      {{ suppressed_note }}
+
+  - name: disk-full
+    pattern: 'No space left on device'
+    cooldown: 1h
+    severity: critical
+
+notifiers:
+  telegram:
+    type: telegram
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    chat_id: ${TELEGRAM_CHAT_ID}
+  slack:
+    type: slack
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    min_severity: warning
+  discord:
+    type: discord
+    webhook_url: ${DISCORD_WEBHOOK_URL:-https://discord.com/api/webhooks/0/replace-me}
+  pager:
+    type: webhook
+    url: ${ALERT_WEBHOOK_URL:-https://example.com/alerts}
+    headers:
+      Authorization: "Bearer ${ALERT_WEBHOOK_TOKEN:-replace-me}"
+  email:
+    type: email
+    host: ${SMTP_HOST:-smtp.example.com}
+    port: 587
+    starttls: true
+    username: ${SMTP_USERNAME:-}
+    password: ${SMTP_PASSWORD:-}
+    from: alerts@example.com
+    to: [ops@example.com]
+    subject_prefix: "[logwatch] "

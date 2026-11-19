@@ -1,0 +1,40 @@
+name: Bug report
+description: logwatch-alert crashed, missed a line, alerted twice or a notifier failed
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste bot tokens, webhook URLs, SMTP passwords or private log data.** Replace them with placeholders.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you expected to be alerted on, what was sent (or not), and the relevant logwatch-alert log lines.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: lines
+    attributes:
+      label: Sample log lines (redacted)
+      description: A few lines that should (or should not) match. `logwatch-alert test` output helps a lot.
+      render: text
+  - type: textarea
+    id: config
+    attributes:
+      label: Config (redacted)
+      description: The sources, rules and notifier types involved.
+      render: yaml
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "Output of: logwatch-alert --version (or the image tag)"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Docker image on Ubuntu 24.04 / pip install on Python 3.12, logrotate with copytruncate"

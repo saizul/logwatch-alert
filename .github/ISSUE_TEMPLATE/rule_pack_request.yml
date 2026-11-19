@@ -1,0 +1,28 @@
+name: Rule pack request
+description: Ask for (or offer to add) a ready-made rule pack for a piece of software
+labels: ["rule-pack", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        See "Add a rule pack" in CONTRIBUTING.md. A pack is one YAML file plus a few tests with sample lines.
+  - type: input
+    id: software
+    attributes:
+      label: Software
+      placeholder: "MySQL, PostgreSQL, Redis, Apache, Caddy, Traefik, fail2ban, WordPress, Laravel, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: events
+    attributes:
+      label: Which events should alert?
+      description: For each one, a sample log line (redacted) and a sensible threshold and cooldown.
+    validations:
+      required: true
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to write this pack

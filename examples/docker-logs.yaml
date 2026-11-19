@@ -1,0 +1,24 @@
+# Pipe a container's output into logwatch-alert:
+#   docker logs -f --since 1m my-app 2>&1 | logwatch-alert -c docker-logs.yaml run
+# or with the image:
+#   docker logs -f my-app 2>&1 | docker run -i --rm -v "$PWD/docker-logs.yaml:/config/config.yaml:ro" \
+#     -e SLACK_WEBHOOK_URL ghcr.io/saizul/logwatch-alert run
+sources:
+  - stdin: true
+    name: my-app
+    # Drop a "docker logs --timestamps" prefix or a "docker compose logs" "web-1  | " prefix.
+    strip: '^(?:\d{4}-\d\d-\d\dT[\d:.]+Z |\S+\s+\| )'
+
+packs: [php, oom]
+
+rules:
+  - name: app-exceptions
+    pattern: '(?P<exc>[A-Z]\w+(?:Error|Exception)): (?P<msg>.+)'
+    group_by: "{{ exc }}"
+    threshold: {count: 3, window: 5m}
+    cooldown: 30m
+
+notifiers:
+  slack:
+    type: slack
+    webhook_url: ${SLACK_WEBHOOK_URL}

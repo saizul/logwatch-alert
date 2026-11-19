@@ -1,0 +1,36 @@
+# PHP rule pack: PHP error log, php-fpm log and web server error logs that embed PHP errors.
+rules:
+  - name: php-fatal-error
+    description: A PHP fatal, parse or uncaught error. One alert per file and line per cooldown.
+    patterns:
+      - 'PHP (?P<kind>Fatal error|Parse error):\s+(?P<error>.+?) in (?P<file>\S+?)(?::| on line )(?P<lineno>\d+)'
+      - 'PHP (?P<kind>Fatal error|Parse error):\s+(?P<error>.+)'
+    cooldown: 15m
+    severity: critical
+    group_by: "{{ file }}:{{ lineno }}:{{ error | truncate(120) }}"
+    title: "[CRITICAL] PHP {{ kind }} on {{ hostname }}"
+    message: |
+      {{ error | truncate(500) }}
+      Location: {{ file | default('unknown') }}:{{ lineno | default('?') }}
+      {{ suppressed_note }}Source: {{ source }}
+
+  - name: php-memory-exhausted
+    description: A PHP script hit memory_limit.
+    pattern: 'Allowed memory size of (?P<limit>\d+) bytes exhausted'
+    cooldown: 30m
+    severity: error
+    title: "[ERROR] PHP memory_limit exhausted on {{ hostname }}"
+    message: |
+      A script ran out of memory (limit {{ limit }} bytes).
+      {{ suppressed_note }}{{ line | truncate(800) }}
+
+  - name: php-fpm-max-children
+    description: php-fpm reached pm.max_children; requests are queuing.
+    pattern: 'WARNING: \[pool (?P<pool>[^\]]+)\] server reached (?:pm\.)?max_children setting'
+    cooldown: 30m
+    severity: warning
+    group_by: "{{ pool }}"
+    title: "[WARNING] php-fpm pool {{ pool }} reached max_children on {{ hostname }}"
+    message: |
+      Raise pm.max_children or find the slow requests.
+      {{ suppressed_note }}{{ line | truncate(500) }}

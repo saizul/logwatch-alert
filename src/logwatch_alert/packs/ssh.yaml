@@ -1,0 +1,27 @@
+# SSH rule pack for /var/log/auth.log (Debian/Ubuntu), /var/log/secure (RHEL) or journald output.
+rules:
+  - name: ssh-brute-force
+    description: Repeated failed SSH logins from one IP address.
+    patterns:
+      - 'Failed (?:password|publickey|keyboard-interactive/pam) for (?:invalid user )?(?P<user>\S+) from (?P<ip>[0-9A-Fa-f.:]+) port \d+'
+      - 'Invalid user (?P<user>\S*) from (?P<ip>[0-9A-Fa-f.:]+)'
+      - 'maximum authentication attempts exceeded for (?:invalid user )?(?P<user>\S+) from (?P<ip>[0-9A-Fa-f.:]+)'
+    threshold: {count: 5, window: 10m}
+    group_by: "{{ ip }}"
+    cooldown: 1h
+    severity: warning
+    title: "[WARNING] SSH brute force from {{ ip }} on {{ hostname }}"
+    message: |
+      {{ count }} failed SSH logins from {{ ip }} in {{ window_human }} (last user tried: {{ user | default('?') }}).
+      {{ suppressed_note }}Consider fail2ban or an allowlist for port 22.
+
+  - name: ssh-root-login
+    description: Someone logged in over SSH as root.
+    pattern: 'Accepted (?P<method>\S+) for root from (?P<ip>[0-9A-Fa-f.:]+)'
+    group_by: "{{ ip }}"
+    cooldown: 1h
+    severity: warning
+    title: "[WARNING] root SSH login from {{ ip }} on {{ hostname }}"
+    message: |
+      root logged in with {{ method }} from {{ ip }}.
+      {{ suppressed_note }}{{ line | truncate(500) }}

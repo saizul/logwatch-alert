@@ -1,0 +1,28 @@
+# nginx rule pack. Works with the default "combined" access log format and the error log.
+rules:
+  - name: nginx-5xx-spike
+    description: Many 5xx responses in the nginx access log within one minute.
+    pattern: '^(?P<client>\S+) \S+ \S+ \[[^\]]+\] "(?P<method>[A-Z]+) (?P<path>\S+)[^"]*" (?P<status>5\d\d) '
+    threshold: {count: 20, window: 1m}
+    cooldown: 10m
+    severity: critical
+    title: "[CRITICAL] nginx 5xx spike on {{ hostname }}"
+    message: |
+      {{ count }} responses with status 5xx in {{ window_human }} ({{ source }}).
+      {{ suppressed_note }}Last: {{ status }} {{ method }} {{ path | truncate(200) }} from {{ client }}
+
+      Recent lines:
+      {{ samples | truncate(1500) }}
+
+  - name: nginx-upstream-errors
+    description: nginx cannot reach or times out on an upstream (PHP-FPM, app server).
+    pattern: '\[(?:error|crit|alert|emerg)\] .*(?P<reason>upstream timed out|connect\(\) failed|no live upstreams|upstream prematurely closed|upstream sent too big header)'
+    threshold: {count: 10, window: 5m}
+    cooldown: 15m
+    severity: error
+    group_by: "{{ reason }}"
+    title: "[ERROR] nginx upstream problem on {{ hostname }}: {{ reason }}"
+    message: |
+      {{ count }} upstream errors ({{ reason }}) in {{ window_human }} ({{ source }}).
+      {{ suppressed_note }}Last line:
+      {{ line | truncate(1000) }}

@@ -1,0 +1,25 @@
+# Out-of-memory pack: kernel log (dmesg, /var/log/kern.log, journalctl -k) and systemd units.
+rules:
+  - name: oom-kill
+    description: The kernel OOM killer terminated a process.
+    patterns:
+      - 'Out of memory: Kill(?:ed)? process (?P<pid>\d+) \((?P<process>[^)]+)\)'
+      - 'Memory cgroup out of memory: Kill(?:ed)? process (?P<pid>\d+) \((?P<process>[^)]+)\)'
+      - 'oom-kill:.*task=(?P<process>[^,\s]+),pid=(?P<pid>\d+)'
+    group_by: "{{ process }}"
+    cooldown: 30m
+    severity: critical
+    title: "[CRITICAL] OOM killer killed {{ process }} on {{ hostname }}"
+    message: |
+      The kernel killed {{ process }} (pid {{ pid }}) because the system or its cgroup ran out of memory.
+      {{ suppressed_note }}{{ line | truncate(800) }}
+
+  - name: oom-systemd-unit
+    description: A systemd unit lost a process to the OOM killer.
+    pattern: '(?P<unit>[\w@.-]+\.(?:service|scope)): (?:A process of this unit has been killed by the OOM killer|Failed with result .oom-kill.)'
+    group_by: "{{ unit }}"
+    cooldown: 30m
+    severity: critical
+    title: "[CRITICAL] {{ unit }} hit the OOM killer on {{ hostname }}"
+    message: |
+      {{ suppressed_note }}{{ line | truncate(800) }}

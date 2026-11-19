@@ -1,0 +1,13 @@
+# Watch host logs and the logs of other containers' log files.
+services:
+  logwatch-alert:
+    image: ghcr.io/saizul/logwatch-alert:latest
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      ALERT_HOSTNAME: web-1
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - /var/log:/var/log:ro            # read-only: logwatch-alert never writes to logs
