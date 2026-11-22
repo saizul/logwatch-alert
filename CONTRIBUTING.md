@@ -35,17 +35,15 @@ Each of these is self-contained and touches one or two files.
    `MISCONF`. (`packs/redis.yaml`, tests)
 4. **Microsoft Teams notifier.** Post a simple MessageCard/Adaptive Card to an incoming
    webhook URL. (`notifiers.py`, tests, README)
-5. **ntfy notifier.** `POST https://ntfy.sh/<topic>` with `Title` and `Priority` headers
-   mapped from the severity. (`notifiers.py`, tests, README)
-6. **`--since` for `test`.** Only replay lines newer than a duration, using a timestamp regex.
+5. **`--since` for `test`.** Only replay lines newer than a duration, using a timestamp regex.
    (`cli.py`, tests)
-7. **Timestamps from log lines in `test`.** Use a `timestamp` capture (ISO 8601 or syslog
+6. **Timestamps from log lines in `test`.** Use a `timestamp` capture (ISO 8601 or syslog
    format) as the event time so thresholds behave as in production when replaying old logs.
    (`engine.py`, `cli.py`, tests)
-8. **Remember file offsets across restarts.** Optional `settings.state_file` storing
+7. **Remember file offsets across restarts.** Optional `settings.state_file` storing
    `{path: [dev, inode, offset]}` so a restart does not skip or repeat lines. (`tailer.py`,
    `runner.py`, tests)
-9. **Apache / Caddy access log pack.** 5xx spike rules for the Apache combined format and
+8. **Apache / Caddy access log pack.** 5xx spike rules for the Apache combined format and
    Caddy's JSON logs (the JSON one is a nice use of `json:` conditions). (`packs/`, tests)
 
 ## Development setup

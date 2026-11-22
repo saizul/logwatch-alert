@@ -258,3 +258,65 @@ def test_background_worker_delivers(recorder, alert):
     dispatcher.stop()
     assert len(recorder.requests) == 2
     assert dispatcher.sent == 2
+
+
+def test_ntfy_maps_severity_to_priority(recorder, alert):
+    notifier = build_notifier(
+        "push", {"type": "ntfy", "topic": "ops-alerts", "tags": "server, prod"}, client=recorder.client()
+    )
+    notifier.send(alert)
+    request = recorder.requests[0]
+    assert str(request.url) == "https://ntfy.sh/"
+    assert "authorization" not in request.headers
+    body = recorder.json()
+    assert body["topic"] == "ops-alerts"
+    assert body["title"] == "[CRITICAL] disk on web1"
+    assert "disk /dev/sda1 full" in body["message"]
+    assert body["priority"] == 5
+    assert body["tags"] == ["server", "prod", "critical"]
+
+
+def test_ntfy_self_hosted_with_token_and_fixed_priority(recorder, alert):
+    notifier = build_notifier(
+        "push",
+        {
+            "type": "ntfy",
+            "topic": "alerts",
+            "server": "https://ntfy.example.invalid/",
+            "token": "tk_test",
+            "priority": 2,
+            "click": "https://grafana.example.invalid",
+        },
+        client=recorder.client(),
+    )
+    notifier.send(alert)
+    request = recorder.requests[0]
+    assert str(request.url) == "https://ntfy.example.invalid/"
+    assert request.headers["authorization"] == "Bearer tk_test"
+    assert recorder.json()["priority"] == 2
+    assert recorder.json()["click"] == "https://grafana.example.invalid"
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ({}, "'topic' is required"),
+        ({"topic": "a/b"}, "topic must be a plain name"),
+        ({"topic": "t", "server": "ntfy.sh"}, "server must be an http\\(s\\) URL"),
+        ({"topic": "t", "priority": 9}, "priority must be an integer from 1 to 5"),
+        ({"topic": "t", "priority": True}, "priority must be an integer from 1 to 5"),
+        ({"topic": "t", "tags": [1]}, "tags must be a list of strings"),
+        ({"topic": "t", "token": ""}, "token must be a non-empty string"),
+    ],
+)
+def test_ntfy_config_errors(options, message):
+    with pytest.raises(ConfigError, match=message):
+        build_notifier("push", {"type": "ntfy", **options})
+
+
+def test_ntfy_error_does_not_leak_token(recorder, alert):
+    recorder.status = 403
+    notifier = build_notifier("push", {"type": "ntfy", "topic": "t", "token": "tk_test"}, client=recorder.client())
+    with pytest.raises(NotifierError) as info:
+        notifier.send(alert)
+    assert "HTTP 403" in str(info.value) and "tk_test" not in str(info.value)

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `ntfy` notifier for push notifications through ntfy.sh or a self-hosted server: JSON
+  publishing (non-ASCII titles work), priority mapped from the severity or fixed with
+  `priority`, `tags`, `click` URL and an optional access `token`.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added

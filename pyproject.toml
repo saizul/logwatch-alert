@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "logwatch-alert"
 dynamic = ["version"]
-description = "Tail log files or docker logs, match YAML rules (regex, thresholds, JSON fields) and send deduplicated alerts to Telegram, Slack, Discord, webhooks and e-mail. Ready-made packs for nginx 5xx, PHP fatals, SSH brute force and OOM kills."
+description = "Tail log files or docker logs, match YAML rules (regex, thresholds, JSON fields) and send deduplicated alerts to Telegram, Slack, Discord, ntfy, webhooks and e-mail. Ready-made packs for nginx 5xx, PHP fatals, SSH brute force and OOM kills."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

@@ -11,7 +11,7 @@
 logwatch-alert follows log files (globs, logrotate, `copytruncate`) or `docker logs`
 on stdin, matches regexes, JSON fields and thresholds such as "20 nginx 5xx in one
 minute", groups and de-duplicates with cooldowns, and sends the alert to Telegram,
-Slack, Discord, any webhook or e-mail. Ready-made rule packs cover nginx 5xx spikes,
+Slack, Discord, ntfy, any webhook or e-mail. Ready-made rule packs cover nginx 5xx spikes,
 PHP fatal errors, SSH brute force and OOM kills.
 
 ```text
@@ -52,7 +52,7 @@ fits the gap between "grep in a cron job" and running a full log stack.
   (`status: {gte: 500}`), source filters, "N matches in M minutes" thresholds
 - **No alert storms**: `group_by` (per IP, per file, per line), per-group cooldowns and a
   "N more were suppressed" note in the next alert
-- **Five notifiers**: Telegram, Slack, Discord, generic webhook (JSON or your own body
+- **Six notifiers**: Telegram, Slack, Discord, ntfy (push to your phone), generic webhook (JSON or your own body
   template), SMTP e-mail; retries with backoff, `min_severity`, non-blocking sender
 - **Rule packs** for nginx, PHP, SSH and OOM, with per-rule overrides
 - **Test before you deploy**: `logwatch-alert test` replays a log file through your rules,
@@ -294,6 +294,15 @@ notifiers:
     type: discord
     webhook_url: ${DISCORD_WEBHOOK_URL}   # embed coloured by severity, mentions disabled
 
+  phone:
+    type: ntfy                            # push notifications via ntfy.sh or a self-hosted server
+    topic: ${NTFY_TOPIC}                  # pick a long, hard-to-guess topic on ntfy.sh
+    # server: https://ntfy.example.com    # default https://ntfy.sh
+    # token: ${NTFY_TOKEN}                # access token for protected topics
+    # tags: [server, prod]                # the severity is always added as a tag
+    # priority: 4                         # 1-5; default from severity (debug 1 ... critical 5)
+    # click: https://grafana.example.com  # URL opened when the notification is tapped
+
   pagerduty-ish:
     type: webhook
     url: https://example.com/hooks/alerts
@@ -408,7 +417,7 @@ you want useful alerts today with one small process and no storage to run.
 Ideas are tracked as issues; the ones marked **good first issue** are a great start.
 
 - More packs: MySQL/MariaDB, PostgreSQL, Redis, Apache, Caddy, Traefik, WordPress (**good first issue**)
-- ntfy, Microsoft Teams and Gotify notifiers (**good first issue**)
+- Microsoft Teams and Gotify notifiers (**good first issue**)
 - Use timestamps from log lines when replaying with `test` (**good first issue**)
 - Persist file offsets across restarts (`settings.state_file`) (**good first issue**)
 - Native journald source

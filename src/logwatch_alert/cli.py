@@ -210,7 +210,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="logwatch-alert",
         description="Tail log files and stdin, match YAML rules, send alerts to Telegram, Slack, "
-        "Discord, webhooks and e-mail.",
+        "Discord, ntfy, webhooks and e-mail.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("-c", "--config", help="config file (default: $LOGWATCH_ALERT_CONFIG or ./config.yaml)")
