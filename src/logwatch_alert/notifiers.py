@@ -1,4 +1,4 @@
-"""Alert senders: Telegram, Slack, Discord, generic webhook and SMTP e-mail.
+"""Alert senders: Telegram, Slack, Discord, ntfy, generic webhook and SMTP e-mail.
 
 Notifier URLs often contain secrets (Telegram bot tokens, Slack/Discord webhook paths),
 so errors are logged without the URL or the response body.
@@ -198,6 +198,60 @@ class Discord(Notifier):
         self._post(self.url, json=payload)
 
 
+NTFY_PRIORITIES = {"debug": 1, "info": 2, "warning": 3, "error": 4, "critical": 5}
+
+
+class Ntfy(Notifier):
+    """Publish to an ntfy topic (ntfy.sh or a self-hosted server) using JSON publishing.
+
+    JSON publishing keeps non-ASCII titles intact, unlike the ``Title`` header.
+    """
+
+    type = "ntfy"
+    allowed = frozenset({"topic", "server", "token", "tags", "priority", "click"})
+
+    def setup(self) -> None:
+        self.topic = _require(self.options, "topic", self.name)
+        if "/" in self.topic or len(self.topic) > 64:
+            raise ConfigError(f"notifier {self.name!r}: topic must be a plain name of at most 64 characters")
+        self.server = str(self.options.get("server", "https://ntfy.sh")).strip().rstrip("/")
+        if not self.server.startswith(("https://", "http://")):
+            raise ConfigError(f"notifier {self.name!r}: server must be an http(s) URL")
+        token = self.options.get("token")
+        if token is not None and (not isinstance(token, str) or not token.strip()):
+            raise ConfigError(f"notifier {self.name!r}: token must be a non-empty string")
+        self.token = token.strip() if isinstance(token, str) else None
+        tags = self.options.get("tags", [])
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+        if not isinstance(tags, list) or not all(isinstance(t, str) for t in tags):
+            raise ConfigError(f"notifier {self.name!r}: tags must be a list of strings")
+        self.tags = tags
+        priority = self.options.get("priority")
+        if priority is not None and (
+            isinstance(priority, bool) or not isinstance(priority, int) or not 1 <= priority <= 5
+        ):
+            raise ConfigError(f"notifier {self.name!r}: priority must be an integer from 1 to 5")
+        self.priority = priority
+        click = self.options.get("click")
+        if click is not None and not isinstance(click, str):
+            raise ConfigError(f"notifier {self.name!r}: click must be a URL string")
+        self.click = click
+
+    def send(self, alert: Alert) -> None:
+        payload: dict[str, Any] = {
+            "topic": self.topic,
+            "title": _truncate(self.title(alert), 250),
+            "message": _truncate(self.text(alert), 4000),
+            "priority": self.priority or NTFY_PRIORITIES.get(alert.severity, 3),
+            "tags": [*self.tags, alert.severity],
+        }
+        if self.click:
+            payload["click"] = self.click
+        headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+        self._post(f"{self.server}/", json=payload, headers=headers)
+
+
 class Webhook(Notifier):
     """POST the alert as JSON (or a rendered ``body`` template) to any URL."""
 
@@ -291,7 +345,7 @@ class Email(Notifier):
             raise NotifierError(f"email delivery failed: {type(exc).__name__}") from None
 
 
-NOTIFIER_TYPES: dict[str, type[Notifier]] = {cls.type: cls for cls in (Telegram, Slack, Discord, Webhook, Email)}
+NOTIFIER_TYPES: dict[str, type[Notifier]] = {cls.type: cls for cls in (Telegram, Slack, Discord, Ntfy, Webhook, Email)}
 
 
 def build_notifier(name: str, options: Mapping[str, Any], **kwargs: Any) -> Notifier:
